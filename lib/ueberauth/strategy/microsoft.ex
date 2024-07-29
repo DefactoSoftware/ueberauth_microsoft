@@ -30,17 +30,22 @@ defmodule Ueberauth.Strategy.Microsoft do
   """
   def handle_callback!(%Plug.Conn{params: %{"code" => code}} = conn) do
     opts = [redirect_uri: callback_url(conn)]
-    client = OAuth.get_token!([code: code], opts)
-    token = client.token
 
-    case token.access_token do
-      nil ->
-        err = token.other_params["error"]
-        desc = token.other_params["error_description"]
+    with {:ok, %{token: %{access_token: access_token}}} = client <-
+           OAuth.get_token!([code: code], opts),
+         true <- not is_nil(access_token) do
+      fetch_user(conn, client)
+    else
+      {:ok, %{token: %{other_params: other_params}}} ->
+        err = other_params["error"]
+        desc = other_params["error_description"]
         set_errors!(conn, [error(err, desc)])
 
-      _token ->
-        fetch_user(conn, client)
+      {:error, %Response{body: %{"error" => err, "error_description" => desc}}} ->
+        set_errors!(conn, [error(err, desc)])
+
+      _ ->
+        set_errors!(conn, [error("OAuth2", "An error occurred while fetching token.")])
     end
   end
 
