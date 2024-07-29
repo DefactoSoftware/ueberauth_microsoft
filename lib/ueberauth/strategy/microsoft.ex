@@ -31,7 +31,7 @@ defmodule Ueberauth.Strategy.Microsoft do
   def handle_callback!(%Plug.Conn{params: %{"code" => code}} = conn) do
     opts = [redirect_uri: callback_url(conn)]
 
-    with {:ok, %{token: %{access_token: access_token}}} = client <-
+    with {:ok, %{token: %{access_token: access_token}} = client} <-
            OAuth.get_token!([code: code], opts),
          true <- not is_nil(access_token) do
       fetch_user(conn, client)
